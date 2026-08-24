@@ -1,10 +1,259 @@
-name: GitHub Video Render Test
+name: GitHub 4-Runner Video Benchmark
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
-  paused:
+  baseline:
+    name: Single runner baseline
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
-      - run: echo "Benchmark setup in progress"
+      - name: Record job start
+        run: echo "JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Show baseline hardware
+        run: |
+          echo "CPU_COUNT=$(nproc)"
+          lscpu | grep -E 'Model name|CPU\(s\):' | head -n 2
+          free -h
+          df -h .
+
+      - name: Render full 2-minute 1080p movie on one runner
+        run: |
+          mkdir -p out
+          RENDER_START=$(date +%s)
+          npx remotion render src/index.jsx GitHubRunnerBenchmark out/baseline-2min-1080p.mp4 --codec=h264 --concurrency=4
+          RENDER_END=$(date +%s)
+          {
+            echo "JOB_START_EPOCH=$JOB_START_EPOCH"
+            echo "RENDER_START_EPOCH=$RENDER_START"
+            echo "RENDER_END_EPOCH=$RENDER_END"
+            echo "RENDER_SECONDS=$((RENDER_END-RENDER_START))"
+            echo "JOB_TO_RENDER_END_SECONDS=$((RENDER_END-JOB_START_EPOCH))"
+            echo "CPU_COUNT=$(nproc)"
+          } | tee out/baseline-timing.txt
+          ls -lh out/baseline-2min-1080p.mp4
+
+      - name: Upload baseline
+        uses: actions/upload-artifact@v4
+        with:
+          name: baseline-render
+          path: |
+            out/baseline-2min-1080p.mp4
+            out/baseline-timing.txt
+          retention-days: 3
+
+  parallel:
+    name: Parallel segment ${{ matrix.part }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 4
+      matrix:
+        include:
+          - part: 1
+            start: 0
+            end: 899
+          - part: 2
+            start: 900
+            end: 1799
+          - part: 3
+            start: 1800
+            end: 2699
+          - part: 4
+            start: 2700
+            end: 3599
+
+    steps:
+      - name: Record job start
+        run: echo "JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Show segment hardware
+        run: |
+          echo "PART=${{ matrix.part }} CPU_COUNT=$(nproc)"
+          lscpu | grep -E 'Model name|CPU\(s\):' | head -n 2
+          free -h
+
+      - name: Render 30-second segment
+        run: |
+          mkdir -p out
+          RENDER_START=$(date +%s)
+          npx remotion render src/index.jsx GitHubRunnerBenchmark out/segment-${{ matrix.part }}.mp4 --codec=h264 --concurrency=4 --frames=${{ matrix.start }}-${{ matrix.end }}
+          RENDER_END=$(date +%s)
+          {
+            echo "PART=${{ matrix.part }}"
+            echo "START_FRAME=${{ matrix.start }}"
+            echo "END_FRAME=${{ matrix.end }}"
+            echo "JOB_START_EPOCH=$JOB_START_EPOCH"
+            echo "RENDER_START_EPOCH=$RENDER_START"
+            echo "RENDER_END_EPOCH=$RENDER_END"
+            echo "RENDER_SECONDS=$((RENDER_END-RENDER_START))"
+            echo "JOB_TO_RENDER_END_SECONDS=$((RENDER_END-JOB_START_EPOCH))"
+            echo "CPU_COUNT=$(nproc)"
+          } | tee out/segment-${{ matrix.part }}-timing.txt
+          ls -lh out/segment-${{ matrix.part }}.mp4
+
+      - name: Upload segment
+        uses: actions/upload-artifact@v4
+        with:
+          name: segment-${{ matrix.part }}
+          path: |
+            out/segment-${{ matrix.part }}.mp4
+            out/segment-${{ matrix.part }}-timing.txt
+          retention-days: 3
+
+  merge:
+    name: Merge 4 parallel segments
+    needs: parallel
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Record merge job start
+        run: echo "MERGE_JOB_START_EPOCH=$(date +%s)" >> "$GITHUB_ENV"
+
+      - name: Download all segment artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: segment-*
+          path: segments
+          merge-multiple: true
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Merge segments without re-encoding
+        run: |
+          mkdir -p out
+          printf "file '%s'\n" \
+            "$(pwd)/segments/segment-1.mp4" \
+            "$(pwd)/segments/segment-2.mp4" \
+            "$(pwd)/segments/segment-3.mp4" \
+            "$(pwd)/segments/segment-4.mp4" > concat.txt
+          MERGE_START=$(date +%s)
+          ffmpeg -y -f concat -safe 0 -i concat.txt -c copy out/parallel-4runner-2min-1080p.mp4
+          MERGE_END=$(date +%s)
+          export MERGE_START MERGE_END
+          python3 - <<'PY'
+          import glob, os
+          def read_kv(path):
+              d = {}
+              with open(path, encoding='utf-8') as f:
+                  for line in f:
+                      if '=' in line:
+                          k, v = line.strip().split('=', 1)
+                          d[k] = v
+              return d
+          parts = [read_kv(p) for p in sorted(glob.glob('segments/segment-*-timing.txt'))]
+          job_starts = [int(p['JOB_START_EPOCH']) for p in parts]
+          render_starts = [int(p['RENDER_START_EPOCH']) for p in parts]
+          render_ends = [int(p['RENDER_END_EPOCH']) for p in parts]
+          render_times = [int(p['RENDER_SECONDS']) for p in parts]
+          merge_start = int(os.environ['MERGE_START'])
+          merge_end = int(os.environ['MERGE_END'])
+          with open('out/parallel-timing.txt', 'w', encoding='utf-8') as f:
+              f.write(f"EARLIEST_SEGMENT_JOB_START_EPOCH={min(job_starts)}\n")
+              f.write(f"EARLIEST_SEGMENT_RENDER_START_EPOCH={min(render_starts)}\n")
+              f.write(f"LATEST_SEGMENT_RENDER_END_EPOCH={max(render_ends)}\n")
+              f.write(f"PARALLEL_RENDER_PHASE_SECONDS={max(render_ends)-min(render_starts)}\n")
+              f.write(f"PARALLEL_SEGMENTS_JOB_TO_RENDER_END_SECONDS={max(render_ends)-min(job_starts)}\n")
+              f.write(f"SLOWEST_SEGMENT_RENDER_SECONDS={max(render_times)}\n")
+              f.write(f"FASTEST_SEGMENT_RENDER_SECONDS={min(render_times)}\n")
+              f.write(f"MERGE_JOB_START_EPOCH={os.environ['MERGE_JOB_START_EPOCH']}\n")
+              f.write(f"MERGE_START_EPOCH={merge_start}\n")
+              f.write(f"MERGE_END_EPOCH={merge_end}\n")
+              f.write(f"MERGE_SECONDS={merge_end-merge_start}\n")
+              f.write(f"PARALLEL_END_TO_END_SECONDS={merge_end-min(job_starts)}\n")
+          PY
+          cat out/parallel-timing.txt
+          ffprobe -v error -show_entries format=duration,size,bit_rate -of default=noprint_wrappers=1 out/parallel-4runner-2min-1080p.mp4
+
+      - name: Upload merged parallel result
+        uses: actions/upload-artifact@v4
+        with:
+          name: parallel-merged
+          path: |
+            out/parallel-4runner-2min-1080p.mp4
+            out/parallel-timing.txt
+            segments/*-timing.txt
+          retention-days: 3
+
+  compare:
+    name: Build final benchmark report
+    needs: [baseline, merge]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Download baseline
+        uses: actions/download-artifact@v4
+        with:
+          name: baseline-render
+          path: baseline
+
+      - name: Download parallel result
+        uses: actions/download-artifact@v4
+        with:
+          name: parallel-merged
+          path: parallel
+
+      - name: Calculate speedup
+        run: |
+          mkdir -p results
+          cp baseline/baseline-2min-1080p.mp4 results/
+          cp parallel/parallel-4runner-2min-1080p.mp4 results/
+          python3 - <<'PY'
+          def read_kv(path):
+              d = {}
+              with open(path, encoding='utf-8') as f:
+                  for line in f:
+                      if '=' in line:
+                          k, v = line.strip().split('=', 1)
+                          d[k] = v
+              return d
+          b = read_kv('baseline/baseline-timing.txt')
+          p = read_kv('parallel/parallel-timing.txt')
+          baseline_render = int(b['RENDER_SECONDS'])
+          baseline_total = int(b['JOB_TO_RENDER_END_SECONDS'])
+          parallel_phase = int(p['PARALLEL_RENDER_PHASE_SECONDS']) + int(p['MERGE_SECONDS'])
+          parallel_total = int(p['PARALLEL_END_TO_END_SECONDS'])
+          render_speedup = baseline_render / parallel_phase if parallel_phase else 0
+          e2e_speedup = baseline_total / parallel_total if parallel_total else 0
+          report = f'''GITHUB ACTIONS 4-RUNNER VIDEO BENCHMARK\n========================================\nComposition: 1920x1080, 30 fps, 120 seconds, 3600 frames\n\nSINGLE RUNNER BASELINE\nRender-only seconds: {baseline_render}\nJob start to render end: {baseline_total}\nCPU count: {b.get('CPU_COUNT')}\n\n4-RUNNER PARALLEL\nParallel render phase seconds: {p['PARALLEL_RENDER_PHASE_SECONDS']}\nSlowest 30s segment render: {p['SLOWEST_SEGMENT_RENDER_SECONDS']}\nFastest 30s segment render: {p['FASTEST_SEGMENT_RENDER_SECONDS']}\nFFmpeg merge seconds: {p['MERGE_SECONDS']}\nParallel job-start to merged video: {parallel_total}\n\nCOMPARISON\nRender-phase speedup including merge: {render_speedup:.2f}x\nEnd-to-end speedup including setup + merge: {e2e_speedup:.2f}x\nTime saved end-to-end: {baseline_total-parallel_total} seconds\n'''
+          print(report)
+          with open('results/benchmark-report.txt', 'w', encoding='utf-8') as f:
+              f.write(report)
+          PY
+
+      - name: Upload final benchmark package
+        uses: actions/upload-artifact@v4
+        with:
+          name: FINAL-2MIN-1080P-BENCHMARK
+          path: results/
+          retention-days: 3
