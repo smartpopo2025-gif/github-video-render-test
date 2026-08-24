@@ -1,0 +1,80 @@
+name: GitHub Video Render Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Show runner hardware
+        run: |
+          echo '=== CPU ==='
+          lscpu
+          echo '=== MEMORY ==='
+          free -h
+          echo '=== DISK ==='
+          df -h
+          echo '=== OS ==='
+          cat /etc/os-release
+          echo '=== TOOL VERSIONS ==='
+          node --version
+          npm --version
+          python3 --version
+          ffmpeg -version | head -n 3
+
+      - name: Test Python outbound API access
+        run: python3 scripts/api_test.py
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Generate 20-second FFmpeg source video
+        run: |
+          mkdir -p out
+          /usr/bin/time -f 'FFMPEG_ELAPSED=%e sec\nFFMPEG_CPU=%P\nFFMPEG_MAX_RSS=%M KB' \
+          ffmpeg -y \
+            -f lavfi -i "testsrc2=size=1280x720:rate=30:duration=20" \
+            -f lavfi -i "sine=frequency=440:sample_rate=48000:duration=20" \
+            -c:v libx264 -preset medium -crf 23 -pix_fmt yuv420p \
+            -c:a aac -b:a 128k -shortest out/ffmpeg-source.mp4
+          ls -lh out/ffmpeg-source.mp4
+
+      - name: Render 20-second Remotion video
+        run: |
+          START=$(date +%s)
+          npm run render
+          END=$(date +%s)
+          echo "REMOTION_RENDER_SECONDS=$((END-START))" | tee out/performance.txt
+          echo "CPU_COUNT=$(nproc)" >> out/performance.txt
+          echo "MEMORY:" >> out/performance.txt
+          free -h >> out/performance.txt
+          echo "DISK:" >> out/performance.txt
+          df -h . >> out/performance.txt
+          echo "OUTPUT:" >> out/performance.txt
+          ls -lh out/final-test.mp4 >> out/performance.txt
+          ffprobe -v error -show_entries format=duration,size,bit_rate -of default=noprint_wrappers=1 out/final-test.mp4 >> out/performance.txt
+          cat out/performance.txt
+
+      - name: Upload test videos and report
+        uses: actions/upload-artifact@v4
+        with:
+          name: github-video-render-test
+          path: |
+            out/final-test.mp4
+            out/ffmpeg-source.mp4
+            out/performance.txt
+          retention-days: 7
