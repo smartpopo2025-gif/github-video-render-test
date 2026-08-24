@@ -4,12 +4,12 @@ import {GitHubRunnerTest} from './GitHubRunnerTest';
 
 const Root = () => (
   <Composition
-    id="GitHubRunnerTest"
+    id="GitHubRunnerBenchmark"
     component={GitHubRunnerTest}
-    durationInFrames={600}
+    durationInFrames={3600}
     fps={30}
-    width={1280}
-    height={720}
+    width={1920}
+    height={1080}
   />
 );
 
