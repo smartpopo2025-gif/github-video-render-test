@@ -60,7 +60,7 @@ try {
  await page.goto(addr,{waitUntil:'load',timeout:60000});
  await page.waitForFunction('window.__ED_READY__===true && window.__ED_RECORD_READY__===true',null,{timeout:120000});
  report.scene=await page.evaluate(()=>window.__ED_INFO__);
- console.log('READY scene:',JSON.stringify(report.scene),flush=true);
+ console.log('READY scene:',JSON.stringify(report.scene));
  if(!report.scene.webgl2)throw Error('WebGL2 unavailable');
  if(report.scene.characterBones!==15 || report.scene.beats!==26)throw Error('Rig or cue setup invalid');
  await page.evaluate(t=>window.setFrame(t,271.55),Math.max(start+1,start));
