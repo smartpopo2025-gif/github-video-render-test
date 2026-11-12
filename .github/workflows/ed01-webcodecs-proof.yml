@@ -1,0 +1,43 @@
+name: The Empty District E01 WebCodecs 10s proof
+on:
+  push:
+    paths:
+      - '.github/workflows/ed01-webcodecs-proof.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  proof:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    env:
+      PART: '0'
+      SEGMENT_SECONDS: '10'
+      TOTAL_SECONDS: '271.55'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install WebGL and video tools
+        run: |
+          cd ed01
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Install Chromium 149
+        run: |
+          curl -fL --max-time 120 -sS 'https://storage.googleapis.com/chrome-for-testing-public/149.0.7790.0/linux64/chrome-headless-shell-linux64.zip' -o /tmp/chrome149.zip
+          unzip -q /tmp/chrome149.zip -d /tmp/chrome149
+          echo 'CHROMIUM_BIN=/tmp/chrome149/chrome-headless-shell-linux64/chrome-headless-shell' >> "$GITHUB_ENV"
+          command -v ffprobe
+          nproc
+          free -h
+      - name: Capture 10s via direct VideoEncoder and MP4 muxer
+        run: node ed01/render.mjs
+      - name: Upload WebCodecs proof of capture
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ED01_WEBCodecs_PROOF_10S
+          path: ed01/out/
+          retention-days: 1
