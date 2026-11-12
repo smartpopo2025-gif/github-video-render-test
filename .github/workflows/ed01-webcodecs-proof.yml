@@ -29,7 +29,7 @@ jobs:
           curl -fL --max-time 120 -sS 'https://storage.googleapis.com/chrome-for-testing-public/149.0.7790.0/linux64/chrome-headless-shell-linux64.zip' -o /tmp/chrome149.zip
           unzip -q /tmp/chrome149.zip -d /tmp/chrome149
           echo 'CHROMIUM_BIN=/tmp/chrome149/chrome-headless-shell-linux64/chrome-headless-shell' >> "$GITHUB_ENV"
-          command -v ffprobe
+          if ! command -v ffprobe; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
           nproc
           free -h
       - name: Capture 10s via direct VideoEncoder and MP4 muxer
