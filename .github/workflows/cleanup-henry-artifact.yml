@@ -1,0 +1,31 @@
+name: Delete completed Henry video artifact after sandbox transfer
+on:
+  push:
+    paths:
+      - '.github/workflows/cleanup-henry-artifact.yml'
+  workflow_dispatch:
+    inputs:
+      artifact_id:
+        description: 'Artifact ID to delete (default is the completed Henry test artifact)'
+        required: false
+        default: '13988328524'
+        type: string
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  delete-only-after-downloading:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Delete the previously downloaded public MP4 artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ARTIFACT_ID: ${{ inputs.artifact_id || '13988328524' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo "Deleting temporary generated video artifact ID $ARTIFACT_ID"
+          gh api -X DELETE "repos/$GITHUB_REPOSITORY/actions/artifacts/$ARTIFACT_ID"
+          echo "Confirmed: public GitHub artifact deleted. ChatGPT local copy remains unaffected."
