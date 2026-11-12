@@ -10,7 +10,7 @@ permissions:
 jobs:
   render-henry:
     name: Henry 10-second 720p WebGL render
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
       - name: Checkout the public repository
