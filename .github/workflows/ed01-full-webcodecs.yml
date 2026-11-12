@@ -1,0 +1,84 @@
+name: The Empty District E01 full 4m31 video (WebCodecs parallel)
+on:
+  push:
+    paths:
+      - '.github/workflows/ed01-full-webcodecs.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Render 30s segment ${{ matrix.part }} (Chromium149)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix:
+        part: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]
+    env:
+      PART: ${{ matrix.part }}
+      SEGMENT_SECONDS: '30'
+      TOTAL_SECONDS: '271.55'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install exact Three.js WebCodecs dependencies
+        run: |
+          cd ed01
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+      - name: Download proven Chromium 149 with SwiftShader
+        run: |
+          curl -fL --max-time 120 -sS 'https://storage.googleapis.com/chrome-for-testing-public/149.0.7790.0/linux64/chrome-headless-shell-linux64.zip' -o /tmp/chrome149.zip
+          unzip -q /tmp/chrome149.zip -d /tmp/chrome149
+          echo 'CHROMIUM_BIN=/tmp/chrome149/chrome-headless-shell-linux64/chrome-headless-shell' >> "$GITHUB_ENV"
+          if ! command -v ffprobe; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
+          echo "CPU=$(nproc)"
+          free -h
+      - name: Record exact story-timed Three.js canvas directly with WebCodecs
+        run: node ed01/render.mjs
+      - name: Upload completed MP4 segment and report (temporary public artifact)
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ED01SEG_${{ matrix.part }}
+          path: ed01/out/
+          retention-days: 1
+
+  merge:
+    name: Join segments losslessly into 4m31 movie
+    needs: render
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: ED01SEG_*
+          path: segments
+          merge-multiple: true
+      - name: Merge 10 direct WebCodecs MP4 segments (no re-encoding)
+        shell: bash
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg; then sudo apt-get update && sudo apt-get install -y ffmpeg; fi
+          mkdir -p output
+          : > concat.txt
+          for i in $(seq 0 9); do
+            printf -v n '%02d' "$i"
+            f="$(pwd)/segments/ed01_segment_${n}.mp4"
+            test -s "$f"
+            printf "file '%s'\n" "$f" >> concat.txt
+          done
+          ffmpeg -nostdin -hide_banner -loglevel error -y -f concat -safe 0 -i concat.txt -c copy -movflags +faststart output/THE_EMPTY_DISTRICT_EP01_SILENT_720P.mp4
+          ffprobe -v error -show_entries format=duration,size -of default=noprint_wrappers=1 output/THE_EMPTY_DISTRICT_EP01_SILENT_720P.mp4 | tee output/video-info.txt
+          cp segments/ED01_PREVIEW.jpg output/ED01_PREVIEW.jpg
+      - name: Export one complete movie artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: THE_EMPTY_DISTRICT_EP01_FULL_SILENT_VIDEO
+          path: output/
+          retention-days: 1
