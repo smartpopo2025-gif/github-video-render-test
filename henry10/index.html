@@ -1,0 +1,24 @@
+<!doctype html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Henry • GitHub 10-second WebGL render</title>
+<style>
+*{box-sizing:border-box}html,body{margin:0;width:1280px;height:720px;overflow:hidden;background:#e2ede8;font-family:Inter,Segoe UI,Arial,sans-serif}
+#stage{display:block;width:1280px;height:720px}
+#shade{position:absolute;inset:0;pointer-events:none;background:linear-gradient(180deg,rgba(5,26,32,.25),transparent 32%,transparent 63%,rgba(6,26,33,.56))}
+#header{position:absolute;top:37px;left:58px;display:flex;align-items:center;gap:13px;color:white;font-size:17px;font-weight:800;letter-spacing:3px}
+#dot{background:#30dfb6;width:13px;height:13px;border-radius:50%;box-shadow:0 0 20px #30ffb3}
+#badge{margin-left:12px;border:1px solid rgba(255,255,255,.46);border-radius:24px;padding:8px 16px;font-size:11px;letter-spacing:1px;background:rgba(3,45,52,.33);backdrop-filter:blur(10px)}
+#bottom{position:absolute;bottom:42px;left:60px;color:white;right:60px;display:flex;align-items:flex-end;justify-content:space-between}
+#headline{font-size:64px;font-weight:950;line-height:1.05;letter-spacing:-2px;text-shadow:0 7px 25px #0005}
+#subtitle{margin-top:11px;font-size:22px;letter-spacing:.2px;font-weight:500;text-shadow:0 4px 13px #0008}
+#timer{font-size:17px;font-weight:700;letter-spacing:1px;text-align:right;font-variant-numeric:tabular-nums}
+#progress{width:220px;height:4px;background:#fff9;margin-top:10px;border-radius:6px}
+#phone-alert{position:absolute;top:180px;right:56px;border:1px solid #fff7;border-radius:15px;padding:16px 21px;background:rgba(15,83,92,.67);color:#fff;font-size:17px;font-weight:800;letter-spacing:.5px;box-shadow:0 10px 36px #0003;opacity:0;transition:none}
+#phone-alert span{font-size:12px;display:block;opacity:.82;font-weight:500;margin-top:4px}
+</style>
+<script type="importmap">{"imports":{"three":"/node_modules/three/build/three.module.js","three/addons/":"/node_modules/three/examples/jsm/"}}</script></head>
+<body><canvas id="stage" width="1280" height="720"></canvas><div id="shade"></div>
+<div id="header"><span id="dot"></span>HENRY <span id="badge">THREE.JS / GITHUB PUBLIC VM</span></div>
+<div id="phone-alert">INCOMING ALERT<span>Unknown notification</span></div>
+<div id="bottom"><div><div id="headline">HENRY</div><div id="subtitle">A strange sound in the living room...</div></div>
+<div id="timer"><div id="clock">00.0 / 10.0</div><div id="progress"></div></div></div>
+<script type="module" src="/scene.js"></script></body></html>
