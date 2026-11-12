@@ -1,0 +1,81 @@
+name: Henry Three.js 10s Public VM WebGL Test
+on:
+  push:
+    paths:
+      - '.github/workflows/henry-threejs-10s.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+jobs:
+  render-henry:
+    name: Henry 10-second 720p WebGL render
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout the public repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Three.js and Playwright
+        working-directory: henry10
+        run: |
+          npm install --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      - name: Verify FFmpeg and GitHub VM hardware
+        run: |
+          if ! command -v ffmpeg; then
+            sudo apt-get update
+            sudo apt-get install -y ffmpeg
+          fi
+          mkdir -p henry10/out
+          {
+            echo 'GitHub runner:'
+            echo "OS: $(uname -a)"
+            echo "CPUs: $(nproc)"
+            lscpu | grep -E 'Model name|CPU\(s\):' | head -n 2
+            free -h
+            df -h .
+            ffmpeg -version | head -n 1
+          } | tee henry10/out/runner-spec.txt
+
+      - name: Prefer exact Chromium Headless Shell 149 if available
+        shell: bash
+        run: |
+          set +e
+          URL='https://storage.googleapis.com/chrome-for-testing-public/149.0.7790.0/linux64/chrome-headless-shell-linux64.zip'
+          curl -fLsS --connect-timeout 10 --max-time 95 "$URL" -o /tmp/chromium149.zip
+          if [ $? -eq 0 ]; then
+            unzip -q /tmp/chromium149.zip -d /tmp/chromium149
+            CHROME="/tmp/chromium149/chrome-headless-shell-linux64/chrome-headless-shell"
+            if [ -f "$CHROME" ]; then
+              chmod +x "$CHROME"
+              echo "CHROMIUM_BIN=$CHROME" >> "$GITHUB_ENV"
+              echo "Chromium 149 downloaded; browser launch will use it."
+            fi
+          else
+            echo 'Chromium 149 download unavailable; using Playwright Chromium + SwiftShader.'
+          fi
+          exit 0
+
+      - name: Render 240 real Three.js WebGL frames then encode MP4
+        run: |
+          cd henry10
+          node render.mjs
+
+      - name: Upload verified MP4 preview and hardware report
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: HENRY_THREEJS_10S_PUBLIC_VM_720P
+          path: |
+            henry10/out/HENRY_THREEJS_GITHUB_PUBLIC_VM_10S_720P.mp4
+            henry10/out/HENRY_PREVIEW.jpg
+            henry10/out/render-report.json
+            henry10/out/runner-spec.txt
+          retention-days: 1
