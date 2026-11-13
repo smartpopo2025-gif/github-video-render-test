@@ -148,7 +148,7 @@ const SceneThree = ({frame}) => {
 }
 
 const SceneFour = ({frame}) => {
-  const a=fade(frame,328,450,16,0),p=E(rel(frame,336,379)),can=E(rel(frame,337,378));
+  const a=fade(frame,328,450,16,1),p=E(rel(frame,336,379)),can=E(rel(frame,337,378));
   return <AbsoluteFill style={{opacity:a,background:"#04152d"}}>
     <Photo file="pepsi_ice.jpg" frame={frame} from={330} to={450} zoom0={1.21} zoom1={1.04}/>
     <AbsoluteFill style={{background:"linear-gradient(90deg,#020b21d9 0%,#020d249a 33%,transparent 58%,#020a20a0 100%)"}}/>
