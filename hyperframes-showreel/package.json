@@ -1,0 +1,14 @@
+{
+  "name": "motion-showreel-hyperframes-gsap",
+  "version": "1.0.0",
+  "private": true,
+  "description": "15-second motion designer showreel, HTML/GSAP/HyperFrames seekable render",
+  "scripts": {
+    "sound": "node scripts/make-audio.cjs",
+    "render": "hyperframes render --output out/MOTION_SHOWREEL_HYPERFRAMES_GSAP_15S.mp4 --quality standard --workers 2"
+  },
+  "dependencies": {
+    "gsap": "3.14.2",
+    "hyperframes": "latest"
+  }
+}
