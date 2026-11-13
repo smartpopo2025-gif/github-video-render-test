@@ -1,0 +1,61 @@
+name: HyperFrames GSAP 15s Showreel (CPU)
+on:
+  push:
+    branches: [feature/hyperframes-gsap-showreel-15s]
+    paths:
+      - 'hyperframes-showreel/**'
+      - '.github/workflows/render-hyperframes-gsap-showreel.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render:
+    name: Render HyperFrames with 2 CPU workers
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Verify FFmpeg
+        run: ffmpeg -version | head -1
+      - name: Install HyperFrames and GSAP
+        working-directory: hyperframes-showreel
+        run: npm install --no-audit --no-fund
+      - name: Generate original soundtrack and stage GSAP
+        working-directory: hyperframes-showreel
+        run: |
+          npm run sound
+          cp node_modules/gsap/dist/gsap.min.js assets/gsap.min.js
+      - name: Render 1920x1080 30fps MP4 on GitHub CPU
+        working-directory: hyperframes-showreel
+        env:
+          CI: 'true'
+          HYPERFRAMES_NO_PREVIEW_DISCOVERY: '1'
+        run: |
+          mkdir -p out
+          npx hyperframes render --output out/MOTION_SHOWREEL_HYPERFRAMES_GSAP_15S.mp4 --fps 30 --quality standard --workers 2
+      - name: Validate rendered video and audio
+        working-directory: hyperframes-showreel
+        run: |
+          ffprobe -v error -show_entries format=duration -show_entries stream=codec_type,width,height,nb_frames -of json out/MOTION_SHOWREEL_HYPERFRAMES_GSAP_15S.mp4 | tee out/ffprobe.json
+          python3 - <<'PY'
+          import json,subprocess
+          p='out/MOTION_SHOWREEL_HYPERFRAMES_GSAP_15S.mp4'
+          f=json.loads(subprocess.check_output(['ffprobe','-v','error','-show_format','-show_streams','-of','json',p]))
+          dur=float(f['format']['duration'])
+          assert abs(dur-15)<0.11, f'duration {dur}'
+          vs=[s for s in f['streams'] if s['codec_type']=='video']
+          assert len(vs)==1 and vs[0]['width']==1920 and vs[0]['height']==1080
+          assert any(s['codec_type']=='audio' for s in f['streams']), 'Audio missing'
+          print('Verified 15s 1920x1080 video and audio')
+          PY
+      - name: Upload MP4 artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: MOTION_SHOWREEL_HYPERFRAMES_GSAP_15S
+          path: |
+            hyperframes-showreel/out/MOTION_SHOWREEL_HYPERFRAMES_GSAP_15S.mp4
+            hyperframes-showreel/out/ffprobe.json
+          retention-days: 7
