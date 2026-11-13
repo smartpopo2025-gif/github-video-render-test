@@ -169,10 +169,11 @@ const SceneTwo = ({frame}) => {
     <Droplets frame={frame} opacity={.46}/>
     <ColdParticles frame={frame} count={38} opacity={.42}/>
     <MicroLabel x={1095} y={174} opacity={E(rel(frame,117,137))}>DETAIL / 02</MicroLabel>
-    <TypeLine x={1088} y={302} size={125} opacity={p} offset={(1-p)*110} tracking="-.07em">SO COLD.</TypeLine>
-    <TypeLine x={1093} y={448} size={84} tone="ice" opacity={q} offset={(1-q)*70} tracking="-.05em">YOU FEEL IT.</TypeLine>
-    <DecorRule x={1096} y={586} w={625*r} opacity={r}/>
-    <EditorialInfo x={1097} y={624} size={28} opacity={r}>FROST. CONDENSATION. REFRESHMENT.</EditorialInfo>
+    <TypeLine x={1080} y={276} size={139} opacity={p} offset={(1-p)*110} tracking="-.065em">SO</TypeLine>
+    <TypeLine x={1080} y={418} size={123} tone="ice" opacity={q} offset={(1-q)*87} tracking="-.07em">COLD.</TypeLine>
+    <TypeLine x={1086} y={592} size={51} opacity={q} offset={(1-q)*65} tracking="-.04em">YOU FEEL IT.</TypeLine>
+    <DecorRule x={1088} y={706} w={600*r} opacity={r}/>
+    <EditorialInfo x={1088} y={741} size={23} opacity={r}>FROST. CONDENSATION. REFRESHMENT.</EditorialInfo>
     <Mist frame={frame} opacity={.42}/>
   </AbsoluteFill>;
 }
