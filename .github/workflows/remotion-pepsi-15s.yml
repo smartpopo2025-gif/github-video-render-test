@@ -1,0 +1,98 @@
+name: Pepsi Remotion 15s - 3 Parallel CPU Runners
+on:
+  push:
+    branches: [feature/remotion-pepsi-cold-block-15s]
+    paths: ['remotion-pepsi/**', '.github/workflows/remotion-pepsi-15s.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  segment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - {part: 1, start: 0, end: 149}
+          - {part: 2, start: 150, end: 299}
+          - {part: 3, start: 300, end: 449}
+    defaults:
+      run:
+        working-directory: remotion-pepsi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install Remotion
+        run: npm install --no-audit --no-fund
+      - name: Download Pepsi stock photography and generate original sound
+        run: |
+          bash scripts/fetch-assets.sh
+          node scripts/make-audio.cjs
+      - name: Render 150 frames on 2 Chromium tabs
+        run: |
+          mkdir -p out
+          npx remotion render src/index.jsx PepsiColdBlock out/pepsi-segment-${{ matrix.part }}.mp4 \
+            --frames=${{ matrix.start }}-${{ matrix.end }} --codec=h264 --concurrency=2 --crf=18 --muted
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pepsi-segment-${{ matrix.part }}
+          path: remotion-pepsi/out/pepsi-segment-${{ matrix.part }}.mp4
+          retention-days: 7
+  merge:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [segment]
+    defaults:
+      run:
+        working-directory: remotion-pepsi
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Install ffmpeg
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: pepsi-segment-*
+          path: remotion-pepsi/parts
+          merge-multiple: true
+      - name: Generate the soundtrack and concatenate the Remotion segments
+        run: |
+          mkdir -p out
+          node scripts/make-audio.cjs
+          printf "file '%s'\n" "$PWD/parts/pepsi-segment-1.mp4" "$PWD/parts/pepsi-segment-2.mp4" "$PWD/parts/pepsi-segment-3.mp4" > out/concat.txt
+          ffmpeg -hide_banner -loglevel warning -y -f concat -safe 0 -i out/concat.txt \
+            -i public/assets/soundtrack.wav -map 0:v:0 -map 1:a:0 \
+            -c:v copy -c:a aac -b:a 192k -t 15.0 -movflags +faststart \
+            out/PEPSI_COLD_BLOCK_REMOTION_15S.mp4
+      - name: Verify 450 frames 1080p 15s video with audio
+        run: |
+          ffprobe -v error -show_format -show_streams -of json out/PEPSI_COLD_BLOCK_REMOTION_15S.mp4 > out/ffprobe.json
+          python3 - <<'PY'
+          import json
+          d=json.load(open('out/ffprobe.json'))
+          video=[s for s in d['streams'] if s['codec_type']=='video']
+          audio=[s for s in d['streams'] if s['codec_type']=='audio']
+          assert len(video)==1 and len(audio)>=1
+          assert video[0]['width']==1920 and video[0]['height']==1080
+          assert int(video[0].get('nb_frames',0))==450
+          assert abs(float(d['format']['duration'])-15)<.11
+          print('PASS: verified 450 frame 1920x1080 15s Remotion MP4 with audio')
+          PY
+          for t in 1 5 9 13; do
+            ffmpeg -y -hide_banner -loglevel error -ss "$t" -i out/PEPSI_COLD_BLOCK_REMOTION_15S.mp4 \
+              -frames:v 1 -q:v 3 "out/preview-"$t"s.jpg"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: PEPSI_COLD_BLOCK_REMOTION_15S_FINAL
+          path: |
+            remotion-pepsi/out/PEPSI_COLD_BLOCK_REMOTION_15S.mp4
+            remotion-pepsi/out/preview-*.jpg
+            remotion-pepsi/out/ffprobe.json
+          retention-days: 7
