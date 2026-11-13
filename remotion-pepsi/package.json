@@ -1,0 +1,14 @@
+{
+  "name": "pepsi-ice-block-remotion",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "render": "remotion render src/index.jsx PepsiColdBlock out/pepsi.mp4 --concurrency=2 --codec=h264"
+  },
+  "dependencies": {
+    "@remotion/cli": "latest",
+    "remotion": "latest",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  }
+}
