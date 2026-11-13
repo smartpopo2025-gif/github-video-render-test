@@ -1,4 +1,8 @@
 import React from "react";
+import "@fontsource/syne/800.css";
+import "@fontsource/space-grotesk/700.css";
+import "@fontsource/manrope/600.css";
+import "@fontsource/manrope/700.css";
 import {
   AbsoluteFill, Audio, Composition, Easing, Img,
   interpolate, registerRoot, spring, staticFile,
@@ -32,13 +36,45 @@ const Mist = ({frame,opacity=1})=><AbsoluteFill style={{opacity,overflow:"hidden
   })}
 </AbsoluteFill>;
 
-const Text = ({children,x,y,size=120,align="left",color="white",tracking="-4px",opacity=1,scale=1,transform="",shadow=true,weight=950,italic=false}) => <div style={{
-  position:"absolute",left:x,top:y,whiteSpace:"nowrap",fontFamily:'Impact,"Arial Black",sans-serif',fontWeight:weight,letterSpacing:tracking,
-  lineHeight:1,color,opacity,fontSize:size,textAlign:align,fontStyle:italic,
-  transform:"scale("+scale+") "+transform,
-  textShadow:shadow?"0 8px 30px rgba(0,18,56,.65)":"none",
-}}>{children}</div>;
 
+/*
+ * TYPOGRAPHIC DESIGN SYSTEM V2
+ * Three real bundled font families, no Impact/Arial fallbacks in the art direction:
+ * Syne ExtraBold — confident modern campaign headlines
+ * Space Grotesk Bold — crisp technical labels
+ * Manrope Semibold/Bold — elegant editorial support and CTA
+ */
+const TypeLine = ({children,x,y,size=120,opacity=1,offset=0,tracking="-0.065em",tone="white",font="Syne",weight=800,gradient=false,outline=false,align="left",width}) => {
+  const col=tone==="ice"?"#BEEFFF":tone==="blue"?"#4DAEFF":tone==="red"?"#F33452":tone==="muted"?"#C5E2F4":"#FFFFFF";
+  return <div style={{
+    position:"absolute",left:x,top:y,width,opacity,transform:"translate3d(0,"+offset+"px,0)",
+    whiteSpace:"nowrap",textAlign:align,
+    fontFamily:'"'+font+'",sans-serif',fontSize:size,fontWeight:weight,
+    letterSpacing:tracking,lineHeight:.97,textTransform:"uppercase",
+    color:gradient?"transparent":col,
+    background:gradient?"linear-gradient(108deg,#ffffff 4%,#c5f2ff 50%,#81d9ff 100%)":undefined,
+    backgroundClip:gradient?"text":undefined,WebkitBackgroundClip:gradient?"text":undefined,
+    WebkitTextStroke:outline?"2px #B3EAF7":"none",
+    filter:"drop-shadow(0 6px 16px rgba(0,12,28,.55))"
+  }}>{children}</div>
+};
+const MicroLabel = ({children,x,y,opacity=1,color="#C3EFFB",size=27}) => <div style={{
+  position:"absolute",left:x,top:y,display:"flex",alignItems:"center",gap:19,opacity,
+  fontFamily:'"Space Grotesk",sans-serif',fontSize:size,fontWeight:700,letterSpacing:".18em",
+  color,textTransform:"uppercase",textShadow:"0 2px 12px rgba(0,0,0,.45)"
+}}>
+  <span style={{display:"inline-block",width:43,height:5,background:"#F32D4E",boxShadow:"0 0 19px #FF3C6260"}}/>
+  <span>{children}</span>
+</div>;
+const EditorialInfo = ({children,x,y,opacity=1,color="#D5EAF7",size=24}) => <div style={{
+  position:"absolute",left:x,top:y,opacity,fontFamily:'"Manrope",sans-serif',
+  fontWeight:700,fontSize:size,letterSpacing:".12em",color,
+  textShadow:"0 2px 14px #001226"
+}}>{children}</div>;
+const DecorRule = ({x,y,w,opacity=1}) => <div style={{
+  position:"absolute",left:x,top:y,width:w,height:2,opacity,
+  background:"linear-gradient(90deg,#9CEFFF 0%,#C5F5FF70 60%,transparent 100%)"
+}}/>;
 const Photo = ({file,frame,from=0,to=450,zoom0=1.04,zoom1=1.13,x0=0,x1=0,y0=0,y1=0,objectPosition="center"}) => {
   const p=C((frame-from)/(to-from));
   return <AbsoluteFill style={{overflow:"hidden",background:"radial-gradient(circle at 50% 45%,#134d8f,#031328 80%)"}}>
@@ -102,66 +138,89 @@ const Droplets = ({frame,opacity=1}) => <AbsoluteFill style={{pointerEvents:"non
 </AbsoluteFill>;
 
 const SceneOne = ({frame}) => {
-  const a=fade(frame,0,125,7,18), drift=E(rel(frame,0,100)), pop=E(rel(frame,58,88));
+  const a=fade(frame,0,125,7,18);
+  const intro=E(rel(frame,36,55));
+  const main=E(rel(frame,53,79));
+  const sub=E(rel(frame,68,90));
   return <AbsoluteFill style={{opacity:a,background:"#031225"}}>
     <Photo file="pepsi_ice.jpg" frame={frame} from={0} to={115} zoom0={1.35} zoom1={1.12}/>
-    <AbsoluteFill style={{background:"linear-gradient(90deg,#020b1dba,transparent 55%,#020e2b23)"}}/>
+    <AbsoluteFill style={{background:"linear-gradient(90deg,#020919de 0%,#031027c9 27%,#06182d3d 58%,#020e2b29 100%)"}}/>
     <IceBlock frame={frame}/>
     <ColdParticles frame={frame} count={92} opacity={.85}/>
     <Mist frame={frame} opacity={.9}/>
     <FrostGlass frame={frame}/>
-    <Text x={92} y={115} size={40} tracking="7px" color="#c6f3ff" opacity={lerp(frame,[0,13,100,119],[0,1,1,0])}>STRAIGHT FROM THE ICE</Text>
-    <Text x={82} y={720} size={144} tracking="-7px" opacity={lerp(frame,[35,51,90,118],[0,1,1,0])} transform={"translateY("+(1-pop)*170+"px)"}>BREAK THE ICE.</Text>
-    <Text x={94} y={900} size={39} tracking="8px" opacity={lerp(frame,[65,79,105,119],[0,1,1,0])} color="#cceeff">INSTANTLY COLDER.</Text>
+    <MicroLabel x={100} y={120} opacity={E(rel(frame,6,24))*(1-rel(frame,105,118))}>COLDEST MOMENT / 01</MicroLabel>
+    <TypeLine x={96} y={660} size={132} opacity={intro*(1-rel(frame,105,122))} offset={(1-intro)*120} tracking="-.062em">BREAK THE</TypeLine>
+    <TypeLine x={93} y={793} size={178} gradient opacity={main*(1-rel(frame,105,122))} offset={(1-main)*105} tracking="-.055em">ICE.</TypeLine>
+    <DecorRule x={101} y={984} w={465*sub} opacity={sub}/>
+    <EditorialInfo x={101} y={1000} opacity={sub*(1-rel(frame,105,120))} size={24}>FROM FROZEN TO ICONIC.</EditorialInfo>
     <AbsoluteFill style={{opacity:lerp(frame,[52,57,61],[0,.65,0]),background:"white",mixBlendMode:"screen"}}/>
   </AbsoluteFill>;
 }
 
 const SceneTwo = ({frame}) => {
-  const local=frame-111, a=fade(frame,109,230,14,19),start=E(rel(frame,115,139));
+  const a=fade(frame,109,230,14,19);
+  const p=E(rel(frame,124,148));
+  const q=E(rel(frame,137,166));
+  const r=E(rel(frame,169,193));
   return <AbsoluteFill style={{opacity:a,background:"#03122b"}}>
     <Photo file="pepsi_dew.jpg" frame={frame} from={110} to={220} zoom0={1.22} zoom1={1.37} x0={-180} x1={-100} objectPosition="30% 48%"/>
-    <AbsoluteFill style={{background:"linear-gradient(90deg,transparent 20%,#030d28c4 60%,#030d25e3 100%)"}}/>
-    <Droplets frame={frame} opacity={.48}/>
+    <AbsoluteFill style={{background:"linear-gradient(90deg,transparent 7%,#030d2838 43%,#030d28e7 68%,#030d25eb 100%)"}}/>
+    <Droplets frame={frame} opacity={.46}/>
     <ColdParticles frame={frame} count={38} opacity={.42}/>
-    <Text x={1095} y={218} size={137} opacity={start} color="#ffffff" transform={"translateY("+(1-start)*95+"px)"}>SO COLD.</Text>
-    <Text x={1110} y={385} size={113} opacity={E(rel(frame,129,152))} color="#a0ebff" transform={"translateY("+(1-E(rel(frame,129,152)))*90+"px)"}>YOU FEEL IT.</Text>
-    <div style={{position:"absolute",left:1108,top:552,width:600*E(rel(frame,154,184)),height:8,background:"#e6faff",boxShadow:"0 0 24px #95e6ff"}}/>
-    <Text x={1110} y={620} size={42} tracking="7px" color="#effcff" opacity={E(rel(frame,165,194))}>FROST • DROPS • FRESHNESS</Text>
-    <Mist frame={frame} opacity={.45}/>
+    <MicroLabel x={1095} y={174} opacity={E(rel(frame,117,137))}>DETAIL / 02</MicroLabel>
+    <TypeLine x={1088} y={302} size={125} opacity={p} offset={(1-p)*110} tracking="-.07em">SO COLD.</TypeLine>
+    <TypeLine x={1093} y={448} size={84} tone="ice" opacity={q} offset={(1-q)*70} tracking="-.05em">YOU FEEL IT.</TypeLine>
+    <DecorRule x={1096} y={586} w={625*r} opacity={r}/>
+    <EditorialInfo x={1097} y={624} size={28} opacity={r}>FROST. CONDENSATION. REFRESHMENT.</EditorialInfo>
+    <Mist frame={frame} opacity={.42}/>
   </AbsoluteFill>;
 }
 
 const SceneThree = ({frame}) => {
-  const a=fade(frame,216,351,16,17), p=E(rel(frame,226,277)),move=E(rel(frame,230,340));
+  const a=fade(frame,216,351,16,17);
+  const p=E(rel(frame,229,260));
+  const q=E(rel(frame,248,280));
+  const move=E(rel(frame,230,340));
   return <AbsoluteFill style={{opacity:a,background:"#051733"}}>
     <Photo file="pepsi_splash.jpg" frame={frame} from={218} to={348} zoom0={1.36} zoom1={1.08} x0={80} x1={-55}/>
-    <AbsoluteFill style={{background:"linear-gradient(0deg,#0411269a,transparent 56%,#061b3890)"}}/>
+    <AbsoluteFill style={{background:"linear-gradient(0deg,#041126dd,transparent 56%,#061b38b8)"}}/>
     <ColdParticles frame={frame} count={114} opacity={1}/>
     <FrostGlass frame={frame}/>
-    <Text x={82} y={110} size={46} tracking="8px" color="#d0faff" opacity={p}>THE MOMENT THE ICE BREAKS.</Text>
-    <Text x={76} y={712} size={154} tracking="-8px" opacity={p} transform={"translateY("+(1-p)*180+"px)"}>UNLOCK</Text>
-    <Text x={72} y={877} size={127} tracking="-6px" opacity={E(rel(frame,248,277))} color="#b7f5ff">THE CHILL.</Text>
+    <MicroLabel x={102} y={124} opacity={E(rel(frame,231,251))}>THE IMPACT / 03</MicroLabel>
+    <TypeLine x={98} y={686} size={156} opacity={p} offset={(1-p)*140} tracking="-.075em">UNLOCK</TypeLine>
+    <TypeLine x={98} y={836} size={119} gradient opacity={q} offset={(1-q)*110} tracking="-.06em">THE CHILL.</TypeLine>
+    <DecorRule x={105} y={1007} w={440*q} opacity={q}/>
     <div style={{position:"absolute",left:1150+70*move,top:165,width:460,height:460,borderRadius:"50%",border:"8px solid #d4f5ff61",opacity:.85-p*.45,transform:"scale("+(1.55-p*.28)+")",boxShadow:"0 0 120px #0e75da77"}}/>
     <Mist frame={frame} opacity={.72}/>
   </AbsoluteFill>;
 }
 
 const SceneFour = ({frame}) => {
-  const a=fade(frame,328,450,16,1),p=E(rel(frame,336,379)),can=E(rel(frame,337,378));
+  const a=fade(frame,328,450,16,1);
+  const p=E(rel(frame,338,367));
+  const q=E(rel(frame,350,387));
+  const c=E(rel(frame,366,399));
   return <AbsoluteFill style={{opacity:a,background:"#04152d"}}>
     <Photo file="pepsi_ice.jpg" frame={frame} from={330} to={450} zoom0={1.21} zoom1={1.04}/>
-    <AbsoluteFill style={{background:"linear-gradient(90deg,#020b21d9 0%,#020d249a 33%,transparent 58%,#020a20a0 100%)"}}/>
+    <AbsoluteFill style={{background:"linear-gradient(90deg,#020b21ee 0%,#020d24e3 34%,#02182f35 65%,#020a2060 100%)"}}/>
     <ColdParticles frame={frame} count={70} opacity={.7}/>
     <Mist frame={frame} opacity={.45}/>
-    <div style={{position:"absolute",top:150,left:140,width:725,height:650,borderLeft:"8px solid #a5eeff",opacity:p,transform:"scaleY("+p+")",transformOrigin:"top left",boxShadow:"0 0 18px #77ddff"}}/>
-    <Text x={205} y={200} size={203} tracking="-8px" opacity={p} transform={"translateY("+(1-p)*120+"px)"}>PEPSI.</Text>
-    <Text x={209} y={435} size={81} tracking="-3px" opacity={E(rel(frame,350,386))} color="#c8f4ff">TASTE THE</Text>
-    <Text x={205} y={531} size={153} tracking="-6px" opacity={E(rel(frame,356,390))}>CHILL.</Text>
-    <div style={{position:"absolute",left:212,top:742,width:425,height:65,borderRadius:35,background:"#e5f9ff",opacity:can,display:"flex",alignItems:"center",justifyContent:"center",transform:"translateY("+(1-can)*50+"px)",boxShadow:"0 0 45px #5ac8ff66"}}>
-      <div style={{fontSize:28,fontWeight:900,fontFamily:"Arial,sans-serif",color:"#062a5e",letterSpacing:5}}>SERVE ICE-COLD</div>
+    <MicroLabel x={145} y={148} opacity={p}>THE FINAL SIP / 04</MicroLabel>
+    <TypeLine x={142} y={263} size={183} tracking="-.072em" opacity={p} offset={(1-p)*125}>PEPSI.</TypeLine>
+    <DecorRule x={149} y={486} w={630*p}/>
+    <TypeLine x={151} y={531} size={77} tone="ice" opacity={q} offset={(1-q)*70} tracking="-.051em">TASTE THE</TypeLine>
+    <TypeLine x={147} y={619} size={133} gradient opacity={q} offset={(1-q)*85} tracking="-.06em">CHILL.</TypeLine>
+    <div style={{
+      position:"absolute",left:152,top:826,width:430,height:78,
+      borderRadius:13,background:"#E52A4D",
+      opacity:c,display:"flex",alignItems:"center",justifyContent:"center",
+      transform:"translateY("+((1-c)*70)+"px)",
+      boxShadow:"0 14px 32px rgba(7,10,39,.35)"
+    }}>
+      <div style={{fontSize:26,fontWeight:700,fontFamily:'"Manrope",sans-serif',color:"white",letterSpacing:".16em"}}>SERVE ICE-COLD</div>
     </div>
-    <Text x={198} y={951} size={25} tracking="6px" opacity={p*.83} color="#d6efff">UNOFFICIAL PRODUCT AD CONCEPT</Text>
+    <EditorialInfo x={153} y={967} opacity={c*.82} size={21}>UNOFFICIAL PRODUCT AD CONCEPT</EditorialInfo>
   </AbsoluteFill>;
 };
 
@@ -174,7 +233,7 @@ export const PepsiColdBlock = () => {
     <SceneThree frame={frame}/>
     <SceneFour frame={frame}/>
     <AbsoluteFill style={{pointerEvents:"none",background:"radial-gradient(ellipse at center, transparent 28%,#00091679 98%)",mixBlendMode:"multiply"}}/>
-    <div style={{position:"absolute",right:44,top:35,opacity:.78,color:"#dceefa",font:"bold 17px Arial,sans-serif",letterSpacing:4}}>PEPSI / COLD BLOCK • 015</div>
+    <div style={{position:"absolute",right:44,top:35,opacity:.78,color:"#dceefa",fontFamily:'"Space Grotesk",sans-serif',fontWeight:700,fontSize:18,letterSpacing:3}}>PEPSI / COLD BLOCK • 015</div>
   </AbsoluteFill>;
 };
 const Root = () => <Composition id="PepsiColdBlock" component={PepsiColdBlock} durationInFrames={450} fps={30} width={W} height={H}/>;
