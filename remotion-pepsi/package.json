@@ -9,6 +9,9 @@
     "@remotion/cli": "latest",
     "remotion": "latest",
     "react": "19.1.0",
-    "react-dom": "19.1.0"
+    "react-dom": "19.1.0",
+    "@fontsource/syne": "5.2.7",
+    "@fontsource/space-grotesk": "5.2.8",
+    "@fontsource/manrope": "5.2.8"
   }
 }
