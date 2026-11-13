@@ -18,8 +18,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Verify FFmpeg
-        run: ffmpeg -version | head -1
+      - name: Install FFmpeg on GitHub runner
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          ffmpeg -version | head -1
       - name: Install HyperFrames and GSAP
         working-directory: hyperframes-showreel
         run: npm install --no-audit --no-fund
@@ -28,6 +31,9 @@ jobs:
         run: |
           npm run sound
           cp node_modules/gsap/dist/gsap.min.js assets/gsap.min.js
+      - name: Check composition (diagnostics)
+        working-directory: hyperframes-showreel
+        run: npx hyperframes lint --verbose || true
       - name: Render 1920x1080 30fps MP4 on GitHub CPU
         working-directory: hyperframes-showreel
         env:
